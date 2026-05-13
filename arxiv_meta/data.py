@@ -1,4 +1,7 @@
 # 数据下载与导入模块
+#
+# 下载委托给 hfpclawer.download.KaggleDownloader（通过 hfpclawer[arxiv] 引入）
+# SQLite FTS5 索引构建保持本地实现。
 
 import gzip
 import json
@@ -9,18 +12,18 @@ import threading
 import time
 from pathlib import Path
 
-from arxiv_meta.config import get, load_config
+from arxiv_meta.config import get as cfg_get
 
 logger = logging.getLogger("arxiv_meta.data")
 
 
 # ════════════════════════════════════════════
-# 数据集下载（Kaggle）
+# 数据集下载（委托 hfpclawer）
 # ════════════════════════════════════════════
 
 
 def download_dataset(force: bool = False) -> Path:
-    """从 Kaggle 下载 arXiv 元数据集
+    """从 Kaggle 下载 arXiv 元数据集（委托 hfpclawer KaggleDownloader）
 
     Args:
         force: 即使文件存在也重新下载
@@ -28,69 +31,23 @@ def download_dataset(force: bool = False) -> Path:
     Returns:
         JSONL 文件路径
     """
-    data_dir = Path(get("data.dir", "data")).expanduser()
+    from hfpclawer.download.kaggle import KaggleDownloader
+
+    data_dir = Path(cfg_get("data.dir", "data")).expanduser()
     data_dir.mkdir(parents=True, exist_ok=True)
-    jsonl_path = data_dir / "arxiv_metadata.jsonl"
 
-    if jsonl_path.exists() and not force:
-        logger.info(f"数据集已存在: {jsonl_path} ({jsonl_path.stat().st_size / 1024 / 1024:.0f} MB)")
-        return jsonl_path
-
-    dataset = get("kaggle.dataset", "Cornell-University/arxiv")
-
-    logger.info(f"从 Kaggle 下载数据集: {dataset}")
-    logger.info("首次下载约 30 分钟，压缩包 ~4.5G，解压后 ~15G")
-    logger.info("需要 kagglehub 库，首次运行会自动安装: pip install kagglehub")
-
-    try:
-        import kagglehub
-    except ImportError:
-        logger.info("安装 kagglehub...")
-        import subprocess
-        subprocess.run(
-            [os.environ.get("PIP", "pip"), "install", "kagglehub"],
-            check=True, capture_output=True,
-        )
-        import kagglehub  # noqa: F811
-
-    # 下载最新版本
-    logger.info("下载中...")
-    path = kagglehub.dataset_download(
-        dataset,
-        force_download=force,
+    dl = KaggleDownloader(
+        data_dir=str(data_dir),
     )
-    download_dir = Path(path)
-    logger.info(f"下载完成: {download_dir}")
 
-    # 查找 JSONL 文件（可能在子目录中）
-    gz_files = list(download_dir.glob("**/*.jsonl*"))
-    if not gz_files:
-        raise FileNotFoundError(f"未找到 JSONL 文件在 {download_dir}")
+    dl.run(force=force)
 
-    src = gz_files[0]
-    if str(src).endswith(".gz"):
-        logger.info(f"解压 {src.name} ({src.stat().st_size / 1024 / 1024:.0f} MB)...")
-        _decompress_gz(src, jsonl_path)
-    else:
-        # 直接复制
-        import shutil
-        logger.info(f"复制 {src.name}...")
-        shutil.copy2(src, jsonl_path)
+    jsonl_path = dl.jsonl_path()
+    if not jsonl_path.exists():
+        raise FileNotFoundError(f"KaggleDownloader 未生成 JSONL: {jsonl_path}")
 
     logger.info(f"数据集就绪: {jsonl_path} ({jsonl_path.stat().st_size / 1024 / 1024:.0f} MB)")
     return jsonl_path
-
-
-def _decompress_gz(gz_path: Path, out_path: Path):
-    """解压 .gz 文件"""
-    chunk_size = 64 * 1024 * 1024  # 64MB chunks
-    with gzip.open(gz_path, "rb") as f_in:
-        with open(out_path, "wb") as f_out:
-            while True:
-                chunk = f_in.read(chunk_size)
-                if not chunk:
-                    break
-                f_out.write(chunk)
 
 
 # ════════════════════════════════════════════
@@ -133,7 +90,7 @@ class ArxivMetaBuilder:
     """数据集构建器 — 解析 JSONL → SQLite FTS5"""
 
     def __init__(self, db_path: str = None):
-        self.db_path = db_path or get("db.path", "data/arxiv_meta.db")
+        self.db_path = db_path or cfg_get("db.path", "data/arxiv_meta.db")
         if not os.path.isabs(self.db_path):
             base = Path(__file__).parent.parent
             self.db_path = str(base / self.db_path)
