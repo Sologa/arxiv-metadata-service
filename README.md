@@ -160,7 +160,11 @@ curl http://localhost:8110/stats
 
 ## 与其他项目集成
 
-### hfpapers-crawler
+### hfpapers-crawler（包名: `hfpclawer`）[更新]
+
+> 命名哲学: **claw**（利爪）≠ **crawl**（爬行）。
+> `hfpclawer` = HF Papers + claw (爪) + er (者) = "用利爪精准抓取论文的智能工具"
+> 通过 `hfpclawer[arxiv]` 可选依赖集成
 
 在 `config.yaml` 中配置：
 

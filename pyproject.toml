@@ -29,7 +29,7 @@ dependencies = [
     "uvicorn[standard]>=0.27",
     "requests>=2.28",
     "pyyaml>=6.0",
-    "hfpclawer[arxiv] @ git+https://gitlab.zhejianglab.com/token-arena/office/hfpapers-clawler.git",
+    "hfpclawer[arxiv] @ git+https://gitlab.zhejianglab.com/token-arena/office/hfpapers-crawler.git",
 ]
 
 [project.optional-dependencies]
