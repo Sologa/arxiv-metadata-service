@@ -1,0 +1,15 @@
+# 配置
+db:
+  path: "data/arxiv_meta.db"        # SQLite FTS5 数据库路径
+
+server:
+  host: "0.0.0.0"                   # 监听地址
+  port: 8110                        # 端口
+
+data:
+  dir: "data/"                      # 数据目录
+  jsonl: "data/arxiv_metadata.jsonl"     # Kaggle JSON Lines 文件
+  jsonl_gz: "data/arxiv_metadata.jsonl.gz"  # 压缩版
+  
+kaggle:
+  dataset: "Cornell-University/arxiv"   # Kaggle 数据集 ID
