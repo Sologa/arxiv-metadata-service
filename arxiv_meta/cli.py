@@ -1,12 +1,15 @@
-# CLI 入口 — arxiv-meta 命令
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# CLI entry point — arxiv-meta command
 
 import logging
-import typer
 from pathlib import Path
+
+import typer
 
 from arxiv_meta.config import get, load_config
 
-app = typer.Typer(name="arxiv-meta", help="arXiv 元数据服务 CLI")
+app = typer.Typer(name="arxiv-meta", help="arXiv Metadata Service CLI")
 
 logger = logging.getLogger("arxiv_meta.cli")
 
@@ -23,23 +26,23 @@ def main_callback(verbose: bool = typer.Option(False, "--verbose", "-v")):
 
 @app.command()
 def download(
-    force: bool = typer.Option(False, "--force", "-f", help="强制重新下载"),
+    force: bool = typer.Option(False, "--force", "-f", help="Force re-download"),
 ):
-    """从 Kaggle 下载 arXiv 元数据集"""
+    """Download arXiv metadata dataset from Kaggle"""
     from arxiv_meta.data import download_dataset
     path = download_dataset(force=force)
-    typer.echo(f"✅ 下载完成: {path}")
+    typer.echo(f"✅ Download complete: {path}")
     size_mb = path.stat().st_size / 1024 / 1024
-    typer.echo(f"   大小: {size_mb:.0f} MB")
-    typer.echo(f"   下一步: arxiv-meta build")
+    typer.echo(f"   Size: {size_mb:.0f} MB")
+    typer.echo("   Next: arxiv-meta build")
 
 
 @app.command()
 def build(
-    jsonl: str = typer.Option("", "--jsonl", "-j", help="JSONL 文件路径，默认使用 config 中的路径"),
-    batch_size: int = typer.Option(2000, "--batch", "-b", help="批处理大小"),
+    jsonl: str = typer.Option("", "--jsonl", "-j", help="JSONL file path, defaults to config path"),
+    batch_size: int = typer.Option(2000, "--batch", "-b", help="Batch size"),
 ):
-    """构建 SQLite FTS5 索引"""
+    """Build SQLite FTS5 index"""
     from arxiv_meta.data import ArxivMetaBuilder
     if not jsonl:
         jsonl = get("data.jsonl", "data/arxiv_metadata.jsonl")
@@ -47,59 +50,59 @@ def build(
     if not jsonl_path.is_absolute():
         jsonl_path = Path(__file__).parent.parent / jsonl_path
     if not jsonl_path.exists():
-        typer.echo(f"❌ JSONL 文件不存在: {jsonl_path}")
-        typer.echo("   先用 arxiv-meta download 下载")
+        typer.echo(f"❌ JSONL file not found: {jsonl_path}")
+        typer.echo("   First run: arxiv-meta download")
         raise typer.Exit(1)
 
     builder = ArxivMetaBuilder()
     total = builder.build(str(jsonl_path), batch_size=batch_size)
     stats = builder.count()
-    typer.echo(f"✅ 导入完成: {total:,} 篇")
-    typer.echo(f"   数据库总计: {stats:,} 篇")
+    typer.echo(f"✅ Import complete: {total:,} papers")
+    typer.echo(f"   Database total: {stats:,} papers")
     db_path = builder.db_path
     size_mb = Path(db_path).stat().st_size / 1024 / 1024
-    typer.echo(f"   数据库大小: {size_mb:.0f} MB")
-    typer.echo(f"   下一步: arxiv-meta serve")
+    typer.echo(f"   Database size: {size_mb:.0f} MB")
+    typer.echo("   Next: arxiv-meta serve")
 
 
 @app.command()
 def serve(
-    host: str = typer.Option(None, "--host", "-h", help="监听地址"),
-    port: int = typer.Option(None, "--port", "-p", help="端口"),
+    host: str = typer.Option(None, "--host", "-h", help="Listen address"),
+    port: int = typer.Option(None, "--port", "-p", help="Port"),
 ):
-    """启动 FastAPI 服务"""
+    """Start FastAPI server"""
     from arxiv_meta.server import run_server
     run_server(host=host, port=port)
 
 
 @app.command()
 def update():
-    """更新数据集（重新下载 + 增量导入）"""
-    from arxiv_meta.data import download_dataset, ArxivMetaBuilder
+    """Update dataset (re-download + incremental import)"""
+    from arxiv_meta.data import ArxivMetaBuilder, download_dataset
     from arxiv_meta.search import ArxivSearch
 
-    # 检查当前状态
+    # Check current state
     engine = ArxivSearch()
     old_stats = engine.stats()
-    typer.echo(f"📊 当前: {old_stats['total']:,} 篇论文")
+    typer.echo(f"📊 Current: {old_stats['total']:,} papers")
 
-    # 下载最新
+    # Download latest
     jsonl_path = download_dataset(force=True)
-    typer.echo(f"📥 已下载最新数据集")
+    typer.echo("📥 Downloaded latest dataset")
 
-    # 增量导入（INSERT OR IGNORE 自动跳过已有的）
+    # Incremental import (INSERT OR IGNORE automatically skips existing)
     builder = ArxivMetaBuilder()
-    new_total = builder.build(str(jsonl_path))
+    builder.build(str(jsonl_path))
     final_count = builder.count()
     new_added = final_count - old_stats["total"]
-    typer.echo(f"✅ 更新完成")
-    typer.echo(f"   新增: {new_added:,} 篇")
-    typer.echo(f"   总计: {final_count:,} 篇")
+    typer.echo("✅ Update complete")
+    typer.echo(f"   New: {new_added:,} papers")
+    typer.echo(f"   Total: {final_count:,} papers")
 
 
 @app.command()
 def config():
-    """查看当前配置"""
+    """View current configuration"""
     import json
     cfg = load_config()
     typer.echo(json.dumps(cfg, indent=2, default=str))
@@ -107,6 +110,6 @@ def config():
 
 @app.command()
 def mcp():
-    """启动 MCP Server（Hermes Agent 集成）"""
+    """Start MCP Server (Hermes Agent integration)"""
     from arxiv_meta.mcp_server import run_mcp_server
     run_mcp_server()

@@ -1,4 +1,6 @@
-# 搜索引擎 — SQLite FTS5 封装
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Search engine — SQLite FTS5 wrapper
 
 import logging
 import os
@@ -15,9 +17,9 @@ DOI_RE = re.compile(r"10\.\d{4,}/[^\s]+")
 
 
 class ArxivSearch:
-    """arXiv FTS5 搜索引擎
+    """arXiv FTS5 search engine
 
-    用法:
+    Usage:
         engine = ArxivSearch()
         results = engine.search("neural operator", limit=50, year_from=2017)
         paper = engine.get_by_id("2001.08361")
@@ -42,14 +44,14 @@ class ArxivSearch:
     def search(self, query: str, limit: int = 50, year_from: int = 0,
                year_to: int = 0, categories: list[str] = None,
                sort: str = "relevance") -> list[dict]:
-        """全文搜索
+        """Full-text search
 
         Args:
-            query: FTS5 查询语法
-            limit: 最大结果数
-            year_from: 起始年份
-            year_to: 截止年份
-            categories: 分类过滤
+            query: FTS5 query syntax
+            limit: Maximum number of results
+            year_from: Start year
+            year_to: End year
+            categories: Category filter
             sort: "relevance" | "date"
 
         Returns:
@@ -81,7 +83,7 @@ class ArxivSearch:
                 update = (r.get("update_date") or "")
                 year_str = update[:4]
 
-                # 年份过滤
+                # Year filter
                 if year_from and year_str:
                     try:
                         if int(year_str) < year_from:
@@ -95,7 +97,7 @@ class ArxivSearch:
                     except ValueError:
                         pass
 
-                # 分类过滤
+                # Category filter
                 if categories:
                     cats = (r.get("categories") or "").split()
                     if not any(c in cats for c in categories):
@@ -116,12 +118,12 @@ class ArxivSearch:
                     break
 
         except sqlite3.OperativeError as e:
-            logger.warning(f"FTS5 查询失败 (索引可能为空): {e}")
+            logger.warning(f"FTS5 query failed (index may be empty): {e}")
 
         return results
 
     def get_by_id(self, arxiv_id: str) -> dict | None:
-        """按 arXiv ID 查单篇"""
+        """Look up a single paper by arXiv ID"""
         try:
             with self._conn() as conn:
                 r = conn.execute(
@@ -135,24 +137,24 @@ class ArxivSearch:
         return None
 
     def get_by_dois(self, dois: list[str]) -> dict[str, str]:
-        """批量按 DOI 查 arXiv ID
+        """Batch lookup arXiv IDs by DOI
 
         Args:
-            dois: DOI 列表
+            dois: List of DOIs
 
         Returns:
-            {doi: arxiv_id, ...} — 只含匹配到的
+            {doi: arxiv_id, ...} — only matching entries
         """
         if not dois:
             return {}
 
-        # 归一化 DOI（去重、截断）
+        # Normalize DOIs (deduplicate, trim)
         clean_dois = []
         for d in dois:
             d = d.strip()
             if d:
                 clean_dois.append(d)
-        clean_dois = list(dict.fromkeys(clean_dois))  # 去重但保持顺序
+        clean_dois = list(dict.fromkeys(clean_dois))  # deduplicate preserving order
 
         result = {}
         try:
@@ -169,7 +171,7 @@ class ArxivSearch:
         return result
 
     def stats(self) -> dict:
-        """数据库统计"""
+        """Database statistics"""
         try:
             with self._conn() as conn:
                 total = conn.execute(
@@ -191,7 +193,7 @@ class ArxivSearch:
         }
 
     def ready(self) -> bool:
-        """检查数据库是否已建好"""
+        """Check if the database is ready"""
         try:
             return self.stats()["total"] > 1000
         except Exception:

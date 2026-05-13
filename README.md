@@ -1,71 +1,71 @@
 # arXiv Metadata Service
 
-本地 arXiv 全量元数据检索服务。基于 Kaggle 的 [arXiv Academic Paper Dataset](https://www.kaggle.com/datasets/Cornell-University/arxiv)（269 万篇论文，每周更新），构建 SQLite FTS5 全文检索引擎，提供 REST API。
+Local arXiv full metadata retrieval service. Based on Kaggle's [arXiv Academic Paper Dataset](https://www.kaggle.com/datasets/Cornell-University/arxiv) (2.69 million papers, updated weekly), builds a SQLite FTS5 full-text search engine with REST API.
 
-## 架构
+## Architecture
 
 ```
-Kaggle 数据集（4.58GB JSONL，每周更新）
+Kaggle Dataset (4.58GB JSONL, weekly updates)
         │
         ▼
-   download.py     ← 自动下载 + 解压
+   download.py     ← Auto download + decompress
         │
         ▼
-   SQLite FTS5     ← 毫秒级全文搜索（~600MB 索引）
+   SQLite FTS5     ← Millisecond full-text search (~600MB index)
         │
         ▼
-   FastAPI          ← REST API（uvicorn）
+   FastAPI          ← REST API (uvicorn)
         │
         ├── GET  /search?q=neural+operator&year_from=2020&limit=50
         ├── GET  /arxiv/{arxiv_id}
-        ├── POST /batch-doi     # 批量按 DOI 查 arXiv ID
+        ├── POST /batch-doi     # Batch DOI to arXiv ID lookup
         ├── GET  /stats
         ├── GET  /health
-        └── POST /update-raw    # 手动触发 Kaggle 下载
+        └── POST /update-raw    # Manually trigger Kaggle download
 ```
 
-## 快速开始
+## Quick Start
 
 ```bash
-# 1. 安装
+# 1. Install
 git clone git@github.com:your/arxiv-metadata-service.git
 cd arxiv-metadata-service
 pip install -e .
 
-# 2. 下载并导入数据集（首次需约 30 分钟，耗 ~15GB 磁盘）
-arxiv-meta download      # 从 Kaggle 下载 JSONL.gz（~4.5G）
-arxiv-meta import        # 解析 JSONL → SQLite FTS5（~600MB）
+# 2. Download and import dataset (first time ~30 minutes, ~15GB disk space)
+arxiv-meta download      # Download JSONL.gz from Kaggle (~4.5G)
+arxiv-meta import        # Parse JSONL → SQLite FTS5 (~600MB)
 
-# 3. 启动 API 服务
-arxiv-meta serve         # 默认 http://localhost:8110
+# 3. Start API server
+arxiv-meta serve         # Default http://localhost:8110
 
-# 4. 测试
+# 4. Test
 curl "http://localhost:8110/search?q=neural+operator&limit=3"
 curl "http://localhost:8110/arxiv/2001.08361"
 ```
 
-## API 文档
+## API Documentation
 
-| 端点 | 方法 | 说明 |
+| Endpoint | Method | Description |
 |------|------|------|
-| `/search?q=&year_from=&year_to=&cat=&limit=&sort=` | GET | 全文搜索 |
-| `/arxiv/{arxiv_id}` | GET | 按 ID 查单篇 |
-| `/batch-doi` | POST | 批量 DOI → arXiv ID |
-| `/stats` | GET | 数据统计 |
-| `/health` | GET | 健康检查 |
-| `/update-raw` | POST | 手动触发数据集更新 |
+| `/search?q=&year_from=&year_to=&cat=&limit=&sort=` | GET | Full-text search |
+| `/arxiv/{arxiv_id}` | GET | Look up single paper by ID |
+| `/batch-doi` | POST | Batch DOI → arXiv ID |
+| `/stats` | GET | Data statistics |
+| `/health` | GET | Health check |
+| `/update-raw` | POST | Manually trigger dataset update |
 
 ### GET /search
 
-参数:
-- `q` — FTS5 查询词（必填，如 `"neural operator"`、`"PINN physics-informed"`）
-- `year_from` — 起始年份（默认 2017）
-- `year_to` — 截止年份（默认不限）
-- `cat` — 分类过滤（逗号分隔，如 `"cs.LG,math.NA"`）
-- `limit` — 结果数（默认 50，最大 500）
-- `sort` — `relevance`（默认）| `date`
+Parameters:
+- `q` — FTS5 query term (required, e.g. `"neural operator"`, `"PINN physics-informed"`)
+- `year_from` — Start year (default 2017)
+- `year_to` — End year (default unlimited)
+- `cat` — Category filter (comma-separated, e.g. `"cs.LG,math.NA"`)
+- `limit` — Number of results (default 50, max 500)
+- `sort` — `relevance` (default) | `date`
 
-返回:
+Response:
 ```json
 {
   "total": 1234,
@@ -96,20 +96,20 @@ curl "http://localhost:8110/arxiv/2001.08361"
   "categories": ["cs.LG", "math.NA", "physics.comp-ph"],
   "doi": "10.1007/978-3-030-58589-1_1",
   "journal_ref": "NeurIPS 2020",
-  "published_date": "2020-01-23"
+  "published_date": "2001-01-23"
 }
 ```
 
 ### POST /batch-doi
 
-请求体:
+Request body:
 ```json
 {
   "dois": ["10.1007/978-3-030-58589-1_1", "10.1038/s42256-022-00576-1"]
 }
 ```
 
-返回:
+Response:
 ```json
 {
   "results": {
@@ -120,28 +120,28 @@ curl "http://localhost:8110/arxiv/2001.08361"
 }
 ```
 
-## 数据更新
+## Data Updates
 
-Kaggle 数据集每周更新。服务自动检测更新：
+The Kaggle dataset is updated weekly. The service automatically detects updates:
 
 ```bash
-# 手动触发
+# Manually trigger
 arxiv-meta update
 
-# 查看当前数据版本
+# View current data version
 curl http://localhost:8110/stats
-# 返回: {total: 2689088, version: "2025-03-13", ...}
+# Returns: {total: 2689088, version: "2025-03-13", ...}
 ```
 
-### 增量更新策略
+### Incremental Update Strategy
 
-导入脚本使用 `INSERT OR IGNORE`，新数据集中的已有论文自动跳过。新论文在 batches 中分批写入 FTS5 索引。每次更新只增加新记录，无需重建索引。
+The import script uses `INSERT OR IGNORE` — existing papers in the new dataset are automatically skipped. New papers are written to the FTS5 index in batches. Each update only adds new records without needing to rebuild the index.
 
-## 配置
+## Configuration
 
-通过 `config.yaml` 或环境变量配置：
+Configure via `config.yaml` or environment variables:
 
-| 配置项 | 环境变量 | 默认值 |
+| Config | Environment Variable | Default |
 |--------|---------|--------|
 | `db.path` | `ARXIV_META_DB` | `data/arxiv_meta.db` |
 | `server.host` | `ARXIV_META_HOST` | `0.0.0.0` |
@@ -150,23 +150,23 @@ curl http://localhost:8110/stats
 | `data.dir` | `ARXIV_META_DATA` | `data/` |
 | `data.jsonl` | — | `data/arxiv_metadata.jsonl` |
 
-## 性能
+## Performance
 
-- **搜索**: 100ms 内返回前 50 条（FTS5 索引，~600MB）
-- **查单篇**: < 10ms（B-tree 主键查询）
-- **批量 DOI**: < 50ms / 100 个 DOI
-- **内存占用**: ~200MB（SQLite page cache）
-- **磁盘**: ~600MB（SQLite DB）+ ~4.5G（原始 JSONL，可删除）
+- **Search**: top 50 results in < 100ms (FTS5 index, ~600MB)
+- **Single paper lookup**: < 10ms (B-tree primary key query)
+- **Batch DOI**: < 50ms / 100 DOIs
+- **Memory**: ~200MB (SQLite page cache)
+- **Disk**: ~600MB (SQLite DB) + ~4.5G (raw JSONL, can be deleted)
 
-## 与其他项目集成
+## Integration with Other Projects
 
-### hfpapers-crawler（包名: `hfpclawer`）[更新]
+### hfpapers-crawler (package: `hfpclawer`) [Updated]
 
-> 命名哲学: **claw**（利爪）≠ **crawl**（爬行）。
-> `hfpclawer` = HF Papers + claw (爪) + er (者) = "用利爪精准抓取论文的智能工具"
-> 通过 `hfpclawer[arxiv]` 可选依赖集成
+> Naming philosophy: **claw** (sharp claw) ≠ **crawl** (creep/crawl).
+> `hfpclawer` = HF Papers + claw + er = "Intelligent tool for precisely grasping papers with sharp claws"
+> Integrated via `hfpclawer[arxiv]` optional dependency
 
-在 `config.yaml` 中配置：
+Configure in `config.yaml`:
 
 ```yaml
 sources:
@@ -176,11 +176,11 @@ sources:
     max_results: 100
 ```
 
-`ArxivRemoteSource` 会替代本地 SQLite 搜索，把它当 REST API 调用。
+`ArxivRemoteSource` replaces local SQLite search and treats it as a REST API call.
 
 ### Hermes Agent
 
-在 `~/.hermes/config.yaml` 中添加 MCP 服务器：
+Add MCP server in `~/.hermes/config.yaml`:
 
 ```yaml
 mcp_servers:

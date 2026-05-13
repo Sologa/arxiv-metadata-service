@@ -1,9 +1,10 @@
-# 数据下载与导入模块
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Data download and import module
 #
-# 下载委托给 hfpclawer.download.KaggleDownloader（通过 hfpclawer[arxiv] 引入）
-# SQLite FTS5 索引构建保持本地实现。
+# Download delegated to hfpclawer.download.KaggleDownloader (via hfpclawer[arxiv])
+# SQLite FTS5 index building kept as local implementation.
 
-import gzip
 import json
 import logging
 import os
@@ -18,18 +19,18 @@ logger = logging.getLogger("arxiv_meta.data")
 
 
 # ════════════════════════════════════════════
-# 数据集下载（委托 hfpclawer）
+# Dataset download (delegated to hfpclawer)
 # ════════════════════════════════════════════
 
 
 def download_dataset(force: bool = False) -> Path:
-    """从 Kaggle 下载 arXiv 元数据集（委托 hfpclawer KaggleDownloader）
+    """Download arXiv metadata dataset from Kaggle (delegated to hfpclawer KaggleDownloader)
 
     Args:
-        force: 即使文件存在也重新下载
+        force: Re-download even if file exists
 
     Returns:
-        JSONL 文件路径
+        JSONL file path
     """
     from hfpclawer.download.kaggle import KaggleDownloader
 
@@ -44,14 +45,14 @@ def download_dataset(force: bool = False) -> Path:
 
     jsonl_path = dl.jsonl_path()
     if not jsonl_path.exists():
-        raise FileNotFoundError(f"KaggleDownloader 未生成 JSONL: {jsonl_path}")
+        raise FileNotFoundError(f"KaggleDownloader did not produce JSONL: {jsonl_path}")
 
-    logger.info(f"数据集就绪: {jsonl_path} ({jsonl_path.stat().st_size / 1024 / 1024:.0f} MB)")
+    logger.info(f"Dataset ready: {jsonl_path} ({jsonl_path.stat().st_size / 1024 / 1024:.0f} MB)")
     return jsonl_path
 
 
 # ════════════════════════════════════════════
-# SQLite FTS5 索引构建
+# SQLite FTS5 Index Building
 # ════════════════════════════════════════════
 
 FTS_SCHEMA = """
@@ -87,7 +88,7 @@ CREATE INDEX IF NOT EXISTS idx_arxiv_meta_doi ON arxiv_meta(doi);
 
 
 class ArxivMetaBuilder:
-    """数据集构建器 — 解析 JSONL → SQLite FTS5"""
+    """Dataset builder — parse JSONL → SQLite FTS5"""
 
     def __init__(self, db_path: str = None):
         self.db_path = db_path or cfg_get("db.path", "data/arxiv_meta.db")
@@ -110,28 +111,28 @@ class ArxivMetaBuilder:
         with self._conn() as conn:
             conn.executescript(FTS_SCHEMA)
             conn.executescript(META_SCHEMA)
-        logger.info(f"SQLite 就绪: {self.db_path}")
+        logger.info(f"SQLite ready: {self.db_path}")
 
     def count(self) -> int:
         with self._conn() as conn:
             return conn.execute("SELECT COUNT(*) FROM arxiv_meta").fetchone()[0]
 
     def build(self, jsonl_path: str, batch_size: int = 2000) -> int:
-        """从 JSONL 文件构建 FTS5 索引
+        """Build FTS5 index from JSONL file
 
         Args:
-            jsonl_path: JSON Lines 文件路径
-            batch_size: 每批写入行数
+            jsonl_path: JSON Lines file path
+            batch_size: Rows per batch write
 
         Returns:
-            导入的论文总数
+            Total number of imported papers
         """
         total = 0
         batch = []
         start = time.time()
         existing_count = self.count()
-        logger.info(f"开始导入: {jsonl_path}")
-        logger.info(f"当前已有: {existing_count:,} 篇")
+        logger.info(f"Starting import: {jsonl_path}")
+        logger.info(f"Existing: {existing_count:,} papers")
 
         with open(jsonl_path, "r") as f:
             for line in f:
@@ -168,8 +169,8 @@ class ArxivMetaBuilder:
         elapsed = time.time() - start
         new_count = self.count() - existing_count
         logger.info(
-            f"导入完成: total={total:,}, 新增={new_count:,}, "
-            f"耗时={elapsed:.0f}s ({total/elapsed:.0f} 篇/s)"
+            f"Import complete: total={total:,}, new={new_count:,}, "
+            f"time={elapsed:.0f}s ({total/elapsed:.0f} papers/s)"
         )
         return total
 
@@ -195,19 +196,19 @@ class ArxivMetaBuilder:
         elapsed = time.time() - start
         rate = total / elapsed if elapsed > 0 else 0
         if total % 50000 == 0:
-            logger.info(f"导入 {total:,} 篇 ({rate:.0f} 篇/s, {elapsed:.0f}s)...")
+            logger.info(f"Imported {total:,} papers ({rate:.0f} papers/s, {elapsed:.0f}s)...")
 
 
 # ════════════════════════════════════════════
-# 便捷函数
+# Convenience functions
 # ════════════════════════════════════════════
 
 
 def ensure_dataset() -> int:
-    """确保数据集已下载并导入
+    """Ensure the dataset is downloaded and imported
 
     Returns:
-        论文总数
+        Total number of papers
     """
     jsonl_path = download_dataset()
     builder = ArxivMetaBuilder()

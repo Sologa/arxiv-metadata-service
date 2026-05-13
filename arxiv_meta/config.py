@@ -1,8 +1,11 @@
-# 配置加载
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Configuration loader
 
 import os
-import yaml
 from pathlib import Path
+
+import yaml
 
 ROOT = Path(__file__).parent.parent
 CONFIG_PATH = ROOT / "config.yaml"
@@ -23,7 +26,7 @@ def load_config(reload: bool = False) -> dict:
         with open(cfg_path) as f:
             config.update(yaml.safe_load(f))
 
-    # 环境变量覆盖
+    # Environment variable overrides
     overrides = {
         "ARXIV_META_DB": ("db", "path"),
         "ARXIV_META_HOST": ("server", "host"),
@@ -43,7 +46,7 @@ def load_config(reload: bool = False) -> dict:
 
 
 def get(key: str, default=None):
-    """点号分隔的配置访问: get('db.path')"""
+    """Dot-separated config access: get('db.path')"""
     cfg = load_config()
     parts = key.split(".")
     v = cfg

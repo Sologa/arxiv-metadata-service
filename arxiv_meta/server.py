@@ -1,4 +1,6 @@
-# FastAPI 服务 — arXiv 元数据 REST API
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# FastAPI service — arXiv metadata REST API
 
 import logging
 from contextlib import asynccontextmanager
@@ -10,7 +12,7 @@ from arxiv_meta.search import ArxivSearch
 
 logger = logging.getLogger("arxiv_meta.api")
 
-# ─── 全局搜索引擎单例 ──────────────────────────
+# ─── Global search engine singleton ──────────────────
 _engine: ArxivSearch | None = None
 
 
@@ -26,26 +28,26 @@ def get_engine() -> ArxivSearch:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """启动时检查数据库状态"""
+    """Check database status on startup"""
     engine = get_engine()
     if engine.ready():
         stats = engine.stats()
-        logger.info(f"📚 搜索引擎就绪: {stats['total']:,} 篇论文")
+        logger.info(f"📚 Search engine ready: {stats['total']:,} papers")
     else:
-        logger.warning("⚠️  数据库为空！请先运行: arxiv-meta import")
-        logger.warning("   或: arxiv-meta download && arxiv-meta build")
+        logger.warning("⚠️  Database empty! Please run: arxiv-meta import")
+        logger.warning("   or: arxiv-meta download && arxiv-meta build")
     yield
 
 
 app = FastAPI(
     title="arXiv Metadata Service",
-    description="本地 arXiv 全量元数据检索 API (269 万篇论文)",
+    description="Local arXiv full metadata retrieval API (2.69 million papers)",
     version="0.1.0",
     lifespan=lifespan,
 )
 
 
-# ─── 模型 ───────────────────────────────────
+# ─── Models ───────────────────────────────────
 
 
 class BatchDoiRequest(BaseModel):
@@ -68,14 +70,14 @@ class HealthResponse(BaseModel):
 
 @app.get("/search")
 def search(
-    q: str = Query(..., description="FTS5 查询词"),
-    limit: int = Query(50, ge=1, le=500, description="结果数"),
-    year_from: int = Query(0, ge=0, description="起始年份"),
-    year_to: int = Query(0, ge=0, description="截止年份"),
-    cat: str = Query("", description="分类过滤，逗号分隔"),
+    q: str = Query(..., description="FTS5 query term"),
+    limit: int = Query(50, ge=1, le=500, description="Number of results"),
+    year_from: int = Query(0, ge=0, description="Start year"),
+    year_to: int = Query(0, ge=0, description="End year"),
+    cat: str = Query("", description="Category filter, comma-separated"),
     sort: str = Query("relevance", regex="^(relevance|date)$"),
 ):
-    """全文搜索 arXiv 元数据"""
+    """Full-text search on arXiv metadata"""
     categories = cat.split(",") if cat else None
     engine = get_engine()
     results = engine.search(
@@ -96,11 +98,11 @@ def search(
 
 @app.get("/arxiv/{arxiv_id}")
 def get_arxiv(arxiv_id: str):
-    """按 arXiv ID 查单篇"""
+    """Look up a single paper by arXiv ID"""
     engine = get_engine()
     paper = engine.get_by_id(arxiv_id)
     if not paper:
-        raise HTTPException(status_code=404, detail=f"arXiv ID {arxiv_id} 未找到")
+        raise HTTPException(status_code=404, detail=f"arXiv ID {arxiv_id} not found")
     return {
         "arxiv_id": paper["arxiv_id"],
         "title": paper["title"],
@@ -115,7 +117,7 @@ def get_arxiv(arxiv_id: str):
 
 @app.post("/batch-doi", response_model=BatchDoiResponse)
 def batch_doi(req: BatchDoiRequest):
-    """批量 DOI → arXiv ID 转换"""
+    """Batch DOI → arXiv ID conversion"""
     engine = get_engine()
     results = engine.get_by_dois(req.dois)
     not_found = [d for d in req.dois if d not in results]
@@ -124,7 +126,7 @@ def batch_doi(req: BatchDoiRequest):
 
 @app.get("/stats")
 def stats():
-    """数据库统计信息"""
+    """Database statistics"""
     engine = get_engine()
     s = engine.stats()
     import os
@@ -141,7 +143,7 @@ def stats():
 
 @app.get("/health", response_model=HealthResponse)
 def health():
-    """健康检查"""
+    """Health check"""
     engine = get_engine()
     s = engine.stats()
     return HealthResponse(
@@ -151,16 +153,16 @@ def health():
     )
 
 
-# ─── 直接启动 ────────────────────────────────
+# ─── Direct launch ────────────────────────────────
 
 
 def run_server(host: str = None, port: int = None):
-    """启动 uvicorn 服务器"""
+    """Start uvicorn server"""
     import uvicorn
     if host is None:
         from arxiv_meta.config import get as cfg_get
         host = cfg_get("server.host", "0.0.0.0")
         port = int(cfg_get("server.port", 8110))
     logger.info(f"🌐 arXiv Metadata Service → http://{host}:{port}")
-    logger.info(f"📚 API 文档 → http://{host}:{port}/docs")
+    logger.info(f"📚 API docs → http://{host}:{port}/docs")
     uvicorn.run(app, host=host, port=port)

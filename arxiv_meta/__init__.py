@@ -1,4 +1,6 @@
-# arXiv Metadata Service — 本地 arXiv 全量元数据检索
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# arXiv Metadata Service — Local arXiv full metadata retrieval
 
-# 版本
+# Version
 __version__ = "0.2.0"

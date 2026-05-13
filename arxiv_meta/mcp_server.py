@@ -1,16 +1,20 @@
-# MCP Server — Hermes Agent 集成
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# MCP Server — Hermes Agent integration
 
-# 这个文件不是包依赖，运行时动态检查 mcp 库
+# This file is not a package dependency; it dynamically checks for the mcp library at runtime
 
 def run_mcp_server():
-    """启动 MCP stdio server"""
+    """Start MCP stdio server"""
     try:
         import mcp.server.stdio
         import mcp.types as types
         from mcp.server import Server
     except ImportError:
-        import subprocess, sys, os
-        print("安装 mcp 库...", file=sys.stderr)
+        import os
+        import subprocess
+        import sys
+        print("Installing mcp library...", file=sys.stderr)
         subprocess.run(
             [os.environ.get("PIP", sys.executable + " -m pip"), "install", "mcp"],
             check=True,
@@ -29,14 +33,14 @@ def run_mcp_server():
         return [
             types.Tool(
                 name="arxiv_search",
-                description="Search arXiv metadata (title, authors, abstract) using FTS5 full-text search. 269万篇论文，毫秒级响应。",
+                description="Search arXiv metadata (title, authors, abstract) using FTS5 full-text search. 2.69 million papers, millisecond response.",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": "FTS5 查询词，如 'neural operator'、'PINN physics-informed'"},
-                        "limit": {"type": "integer", "description": "结果数，默认 50", "default": 50},
-                        "year_from": {"type": "integer", "description": "起始年份", "default": 2017},
-                        "sort": {"type": "string", "enum": ["relevance", "date"], "description": "排序方式", "default": "relevance"},
+                        "query": {"type": "string", "description": "FTS5 query term, e.g. 'neural operator', 'PINN physics-informed'"},
+                        "limit": {"type": "integer", "description": "Number of results, default 50", "default": 50},
+                        "year_from": {"type": "integer", "description": "Start year", "default": 2017},
+                        "sort": {"type": "string", "enum": ["relevance", "date"], "description": "Sort method", "default": "relevance"},
                     },
                     "required": ["query"],
                 },
@@ -99,7 +103,7 @@ def run_mcp_server():
         elif name == "arxiv_stats":
             return [types.TextContent(type="text", text=json.dumps(engine.stats(), ensure_ascii=False))]
 
-        raise ValueError(f"未知工具: {name}")
+        raise ValueError(f"Unknown tool: {name}")
 
     import anyio
     async def main():
