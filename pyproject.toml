@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "arxiv-metadata-service"
 version = "0.2.0"
-description = "Local arXiv full metadata retrieval service — Kaggle data + SQLite FTS5 + FastAPI"
+description = "Local arXiv full metadata retrieval service — SQLite FTS5 full-text search + FastAPI REST API + MCP server (2.69 million papers)"
 authors = [
     {name = "Li Shen"},
 ]
-license = {text = "MIT"}
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.10"
-keywords = ["arxiv", "metadata", "search", "fts5", "fastapi", "kaggle"]
+keywords = ["arxiv", "metadata", "fts5", "sqlite", "fastapi", "mcp", "paper-search"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -21,33 +21,38 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Database :: Front-Ends",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-]
-dependencies = [
-    "fastapi>=0.110",
-    "uvicorn[standard]>=0.27",
-    "requests>=2.28",
-    "pyyaml>=6.0",
-    "hfpclawer[arxiv] @ file:///home/lishen/Gitlab/Agentic4Sci/hfpapers-crawler",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "ruff",
-    "pyright",
-    "pytest>=7.0",
-    "httpx>=0.27",
+dependencies = [
+    "pyyaml>=6.0",
+    "typer>=0.9",
+    "fastapi>=0.100",
+    "uvicorn[standard]>=0.20",
+    "pydantic>=2.0",
 ]
-# kaggle dependency provided by hfpclawer[arxiv]
+
+[project.urls]
+Homepage = "https://github.com/diamond2nv/arxiv-metadata-service"
+Repository = "https://github.com/diamond2nv/arxiv-metadata-service"
+Documentation = "https://github.com/diamond2nv/arxiv-metadata-service"
+
+[project.optional-dependencies]
+mcp = [
+    "mcp>=1.0",
+]
+dev = [
+    "arxiv-metadata-service[mcp]",
+    "ruff",
+    "pytest>=7.0",
+]
 
 [project.scripts]
 arxiv-meta = "arxiv_meta.cli:app"
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-addopts = "-q --tb=short"
+[tool.setuptools.packages.find]
+include = ["arxiv_meta*"]
 
 [tool.ruff]
 line-length = 100
@@ -59,6 +64,3 @@ quote-style = "double"
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "N"]
 ignore = ["E501"]
-
-[tool.setuptools.packages.find]
-include = ["arxiv_meta*"]

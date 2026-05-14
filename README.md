@@ -2,6 +2,26 @@
 
 Local arXiv full metadata retrieval service. Based on Kaggle's [arXiv Academic Paper Dataset](https://www.kaggle.com/datasets/Cornell-University/arxiv) (2.69 million papers, updated weekly), builds a SQLite FTS5 full-text search engine with REST API.
 
+## Install
+
+```bash
+# pip install from GitHub (no PyPI)
+pip install git+https://github.com/diamond2nv/arxiv-metadata-service.git
+
+# With MCP support (Hermes Agent integration)
+pip install git+https://github.com/diamond2nv/arxiv-metadata-service.git#egg=arxiv-metadata-service[mcp]
+
+# Local development
+git clone git@github.com:diamond2nv/arxiv-metadata-service.git
+cd arxiv-metadata-service
+pip install -e ".[dev]"
+```
+
+Used as an optional dependency in hfpapers-crawler:
+```bash
+pip install hfpclawer[arxiv]
+```
+
 ## Architecture
 
 ```
