@@ -3,4 +3,4 @@
 # arXiv Metadata Service — Local arXiv full metadata retrieval
 
 # Version
-__version__ = "0.2.0"
+__version__ = "1.0.0"

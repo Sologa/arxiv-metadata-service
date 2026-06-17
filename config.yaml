@@ -1,15 +1,20 @@
-# Configuration
+# Local arXiv metadata service configuration.
+
 db:
-  path: "data/arxiv_meta.db"        # SQLite FTS5 database path
+  path: "/Volumes/My Book/ARXIV/arxiv_oai_title_fts.sqlite"
+  read:
+    # immutable=1 is safe only when no writer is modifying the DB file.
+    immutable: true
+    # query_only prevents accidental writes from normal search/API paths.
+    query_only: true
+    # mmap_size is bytes; 268435456 = 256 MiB.
+    mmap_size: 268435456
+    # Negative cache_size means KiB; -80000 is about 80 MiB.
+    cache_size: -80000
 
 server:
-  host: "0.0.0.0"                   # Listen address
-  port: 8110                        # Port
+  host: "127.0.0.1"
+  port: 8110
 
 data:
-  dir: "data/"                      # Data directory
-  jsonl: "data/arxiv_metadata.jsonl"     # Kaggle JSON Lines file
-  jsonl_gz: "data/arxiv_metadata.jsonl.gz"  # Compressed version
-  
-kaggle:
-  dataset: "Cornell-University/arxiv"   # Kaggle dataset ID
+  jsonl: "/Volumes/My Book/ARXIV/arxiv-metadata-oai-snapshot.json"
