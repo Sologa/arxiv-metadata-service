@@ -204,6 +204,17 @@ Supported text fields:
 - `authors`
 - `all`
 
+Supported text match types:
+
+- `term`
+- `phrase`
+- `prefix`
+
+`prefix` is a normalized trailing-prefix match type. For example,
+`{"type": "prefix", "value": "taxonom"}` matches FTS5 tokens such as
+`taxonomy`; a single trailing `*` in the value is also accepted. Raw FTS syntax
+is still not accepted by the plain `/search` endpoint.
+
 Supported metadata/range fields:
 
 - `category`

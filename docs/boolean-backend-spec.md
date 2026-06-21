@@ -125,6 +125,11 @@ Supported text match types for the first version:
 
 - `term`
 - `phrase`
+- `prefix`
+
+`prefix` is a normalized trailing-prefix match type. It compiles only the final
+token as an FTS5 prefix token and does not expose raw FTS syntax through
+`/search`.
 
 Range filters should be represented as structured objects rather than parsed
 from strings in this repo:

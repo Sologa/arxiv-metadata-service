@@ -97,6 +97,28 @@ def test_boolean_backend_combines_text_or_with_category_filter(boolean_db: Path)
     assert all("score" in row for row in results)
 
 
+def test_boolean_backend_supports_text_prefix_match(boolean_db: Path):
+    engine = ArxivSearch(boolean_db)
+
+    results = engine.boolean_search(
+        {"field": "title", "match": {"type": "prefix", "value": "taxonom"}},
+        limit=10,
+    )
+
+    assert [row["arxiv_id"] for row in results] == ["2601.00001"]
+
+
+def test_boolean_backend_accepts_trailing_star_in_prefix_value(boolean_db: Path):
+    engine = ArxivSearch(boolean_db)
+
+    results = engine.boolean_search(
+        {"field": "title", "match": {"type": "prefix", "value": "taxonom*"}},
+        limit=10,
+    )
+
+    assert [row["arxiv_id"] for row in results] == ["2601.00001"]
+
+
 def test_boolean_backend_supports_metadata_or_and_date_range(boolean_db: Path):
     engine = ArxivSearch(boolean_db)
 
@@ -157,6 +179,8 @@ def test_boolean_backend_rejects_unsupported_fields_and_match_types(boolean_db: 
         engine.boolean_search({"field": "venue", "match": {"type": "term", "value": "ACL"}})
     with pytest.raises(SearchError):
         engine.boolean_search({"field": "title", "match": {"type": "regex", "value": "tax.*"}})
+    with pytest.raises(SearchError):
+        engine.boolean_search({"field": "title", "match": {"type": "prefix", "value": "ta*xo"}})
 
 
 def test_existing_plain_search_still_rejects_raw_grouped_boolean(boolean_db: Path):
@@ -164,6 +188,13 @@ def test_existing_plain_search_still_rejects_raw_grouped_boolean(boolean_db: Pat
 
     with pytest.raises(InvalidFTSQuery):
         engine.search('(Taxonomy OR Graph)')
+
+
+def test_existing_plain_search_still_rejects_raw_prefix(boolean_db: Path):
+    engine = ArxivSearch(boolean_db)
+
+    with pytest.raises(InvalidFTSQuery):
+        engine.search("taxonom*")
 
 
 def test_boolean_search_api_uses_normalized_query_object(boolean_db: Path):
@@ -193,3 +224,21 @@ def test_boolean_search_api_uses_normalized_query_object(boolean_db: Path):
     assert body["compiled"]["metadata_fields"] == ["category"]
     assert body["total"] == 1
     assert body["results"][0]["arxiv_id"] == "2601.00002"
+
+
+def test_boolean_search_api_supports_prefix_match(boolean_db: Path):
+    server.configure_engine(str(boolean_db))
+    client = TestClient(server.app)
+
+    response = client.post(
+        "/boolean-search",
+        json={
+            "query_object": {"field": "title", "match": {"type": "prefix", "value": "taxonom"}},
+            "limit": 5,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["results"][0]["arxiv_id"] == "2601.00001"

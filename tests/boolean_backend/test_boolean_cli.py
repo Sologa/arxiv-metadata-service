@@ -48,3 +48,24 @@ def test_boolean_search_cli_reads_normalized_query_file(tmp_path: Path, boolean_
     assert body["compiled"]["fields"] == ["abstract", "category"]
     assert body["total"] == 1
     assert body["results"][0]["arxiv_id"] == "2601.00002"
+
+
+def test_boolean_search_cli_supports_prefix_match(tmp_path: Path, boolean_db: Path):
+    query_path = tmp_path / "query.json"
+    query_path.write_text(
+        json.dumps(
+            {
+                "query_object": {"field": "title", "match": {"type": "prefix", "value": "taxonom"}},
+                "limit": 5,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(app, ["boolean-search", str(query_path), "--db", str(boolean_db)])
+
+    assert result.exit_code == 0
+    body = json.loads(result.stdout)
+    assert body["mode"] == "boolean"
+    assert body["total"] == 1
+    assert body["results"][0]["arxiv_id"] == "2601.00001"

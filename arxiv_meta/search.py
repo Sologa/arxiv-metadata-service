@@ -94,15 +94,34 @@ def fts_terms(tokens: list[str]) -> str:
     return " ".join(f'"{token}"' for token in tokens)
 
 
+def fts_prefix(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        raise InvalidBooleanQuery("Prefix match value must not be empty.")
+    if len(text) > MAX_QUERY_LENGTH:
+        raise QueryLimitError(f"Prefix match value must be at most {MAX_QUERY_LENGTH} characters.")
+    if "*" in text.rstrip("*") or text.count("*") > 1:
+        raise InvalidBooleanQuery("Prefix match only supports a single trailing '*'.")
+    tokens = tokenize_boolean_text(text[:-1] if text.endswith("*") else text)
+    if not tokens[-1]:
+        raise InvalidBooleanQuery("Prefix match value could not be parsed.")
+    prefix_terms = [f'"{token}"' for token in tokens[:-1]]
+    prefix_terms.append(f"{tokens[-1]}*")
+    return " ".join(prefix_terms)
+
+
 def boolean_text_fts_query(field: str, match: dict[str, Any]) -> str:
     match_type = str(match.get("type") or "").casefold()
     value = match.get("value")
-    tokens = tokenize_boolean_text(value)
 
     if match_type == "phrase":
+        tokens = tokenize_boolean_text(value)
         expression = fts_phrase(tokens)
     elif match_type == "term":
+        tokens = tokenize_boolean_text(value)
         expression = fts_terms(tokens)
+    elif match_type == "prefix":
+        expression = fts_prefix(value)
     else:
         raise InvalidBooleanQuery(f"Unsupported text match type: {match_type or '<missing>'}.")
 
